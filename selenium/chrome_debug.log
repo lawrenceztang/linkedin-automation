@@ -1,3 +1,0 @@
-[6963:6963:0104/134451.255873:ERROR:sandbox_linux.cc(374)] InitializeSandbox() called with multiple threads in process gpu-process.
-[6915:6915:0104/134451.771135:WARNING:CONSOLE(0)] "Error with Permissions-Policy header: Unrecognized feature: 'interest-cohort'.", source:  (0)
-[6915:6915:0104/134642.326930:WARNING:pref_notifier_impl.cc(40)] Pref observer for media_router.cast_allow_all_ips found at shutdown.

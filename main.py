@@ -6,12 +6,14 @@ import time
 import csv
 
 message = "I'd like to connect!"
-companies_file = "companies_github.csv"
+companies_file = "companies_short.csv"
 day_limit = 50
-limit_per_company = 5
+limit_per_company = 50
 password = "MY_PASSWORD"
 username = "MY_USERNAME"
 people_query = "?facetSchool=18314"
+webdriver_path = "C:/Users/larry/Downloads/chromedriver_win32/chromedriver.exe"
+
 
 def get_companies_list():
     out = []
@@ -40,11 +42,10 @@ def scroll_down(driver):
             break
         last_height = new_height
 
-def replace_message(company, driver):
+def replace_message(company, driver, name):
     new_message = message
     new_message = new_message.replace("[company]", company)
-    name = driver.find_element_by_xpath("//h2[@id='send-invite-modal']").text.split(" ")[1]
-    new_message = new_message.replace("[name]", name)
+    new_message = new_message.replace("there", name)
     return new_message
 
 def login(driver):
@@ -58,9 +59,11 @@ def login(driver):
 def main():
     options = webdriver.ChromeOptions()
     options.add_argument("--start-maximized")
-    # options.add_argument("user-data-dir=%s" % os.path.join(os.path.dirname(os.path.realpath(__file__)), "selenium"))
-    driver = webdriver.Chrome(chrome_options=options)
-    login(driver)
+    # options.add_argument("user-data-dir=C:/Users/larry/AppData/Local/Google/Chrome/User Data")
+    options.add_argument("user-data-dir=%s" % os.path.join(os.path.dirname(os.path.realpath(__file__)), "selenium"))
+    driver = webdriver.Chrome(executable_path=webdriver_path, chrome_options=options)
+    # login(driver)
+    driver.get("https://www.linkedin.com")
     time.sleep(1)
 
     day_count = 0
@@ -68,36 +71,80 @@ def main():
     for company in get_companies_list():
         print("\n" + company)
         driver.get(f"https://www.linkedin.com/search/results/all/?keywords={company}&origin=GLOBAL_SEARCH_HEADER&sid=.wg)")
+        time.sleep(4)
         try:
-            driver.find_element_by_xpath("//a[@class='app-aware-link artdeco-button artdeco-button--default artdeco-button--2 artdeco-button--secondary']").click()
+            a = driver.find_element_by_xpath("//a[@class='app-aware-link  search-nec__hero-kcard-v2-link-wrapper link-without-hover-state link-without-visited-state t-normal t-black--light']").get_attribute("href")
+            # a = "https://www.linkedin.com/company/rivian/"
+            #company = "Rivian"
         except:
             continue
-        time.sleep(1)
-        driver.get(driver.current_url + "/people/" + people_query)
+        driver.get(a + "/people/?keywords=recruiter")
 
         time.sleep(4)
-        list = driver.find_elements_by_xpath("//span[text()='Connect']/..")
+
         company_count = 0
-        for elem in list:
+        i = -1
+        while company_count < limit_per_company and day_count < day_limit:
+            i += 1
+
+            while True:
+                try:
+                    driver.find_element_by_xpath("//button[@class='msg-overlay-bubble-header__control artdeco-button artdeco-button--circle artdeco-button--muted artdeco-button--1 artdeco-button--tertiary ember-view']").click()
+                    time.sleep(1)
+                except:
+                    break
+
+            list = driver.find_elements_by_xpath("//div[@class='org-people-profile-card__profile-info']")
+            if i >= len(list):
+                try:
+                    driver.find_element_by_xpath("//span[text()='Show more results']").click()
+                except:
+                    pass
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(3)
+                list = driver.find_elements_by_xpath(
+                "//div[@class='org-people-profile-card__profile-info']")
+
+            try:
+                elem = list[i]
+            except:
+                continue
             if company_count >= limit_per_company:
                 break
             if day_count >= day_limit:
                 time.sleep(86400)
-            elem.click()
-            time.sleep(.1)
-            driver.find_element_by_xpath("//button[@aria-label='Add a note']").click()
-            driver.find_element_by_xpath("//textarea").send_keys(replace_message(company, driver))
-            time.sleep(.1)
-            driver.find_element_by_xpath("//button[@aria-label='Send now']").click()
             try:
-                driver.find_element_by_xpath("//svg[@xmlns='http://www.w3.org/2000/svg']").click()
+                elem.click()
             except:
                 pass
-            time.sleep(random.random() + 1)
+            time.sleep(3)
+
+            try:
+                name = driver.find_element_by_xpath("//h1[@class='text-heading-xlarge inline t-24 v-align-middle break-words']").text.split()[0]
+            except:
+                continue
+            try:
+                driver.find_elements_by_xpath("//li-icon[@type='send-privately']")[1].click()
+                time.sleep(1)
+            except:
+                driver.get(a + "/people/?keywords=recruiter")
+                time.sleep(5)
+                continue
+            try:
+                driver.find_element_by_xpath("//input[@placeholder='Subject (optional)']").send_keys(note.format(company=company))
+                driver.find_element_by_xpath("//div[@class='msg-inmail-compose-form-v2 relative flex-1 white display-flex flex-column']//div[@aria-label='Write a message…']").send_keys(message.format(company=company, name=name))
+            except:
+                driver.get(a + "/people/?keywords=recruiter")
+                time.sleep(5)
+                continue
+            time.sleep(.1)
+            driver.find_element_by_xpath("//button[@class='msg-form__send-button artdeco-button artdeco-button--1']").click()
+            time.sleep(1)
             day_count += 1
             company_count += 1
-
             print(f" {company_count} ", end='')
+            driver.get(a + "/people/?keywords=recruiter")
+            time.sleep(random.random() + 5)
 
 
 
