@@ -59,92 +59,86 @@ def login(driver):
 def main():
     options = webdriver.ChromeOptions()
     options.add_argument("--start-maximized")
-    # options.add_argument("user-data-dir=C:/Users/larry/AppData/Local/Google/Chrome/User Data")
     options.add_argument("user-data-dir=%s" % os.path.join(os.path.dirname(os.path.realpath(__file__)), "selenium"))
     driver = webdriver.Chrome(executable_path=webdriver_path, chrome_options=options)
-    # login(driver)
     driver.get("https://www.linkedin.com")
+
     time.sleep(1)
 
     day_count = 0
 
     for company in get_companies_list():
+        count_bad = 0
         print("\n" + company)
         driver.get(f"https://www.linkedin.com/search/results/all/?keywords={company}&origin=GLOBAL_SEARCH_HEADER&sid=.wg)")
         time.sleep(4)
         try:
-            a = driver.find_element_by_xpath("//a[@class='app-aware-link  search-nec__hero-kcard-v2-link-wrapper link-without-hover-state link-without-visited-state t-normal t-black--light']").get_attribute("href")
-            # a = "https://www.linkedin.com/company/rivian/"
-            #company = "Rivian"
+            a = driver.find_element_by_xpath(
+                "//a[@class='app-aware-link  search-nec__hero-kcard-v2-link-wrapper link-without-hover-state link-without-visited-state t-normal t-black--light']").get_attribute(
+                "href")
+            # a = "https://www.linkedin.com/company/d.-e.-shaw-&-co./"
         except:
             continue
-        driver.get(a + "/people/?keywords=recruiter")
+
+        driver.get(a + "/people/")
+
 
         time.sleep(4)
 
         company_count = 0
-        i = -1
         while company_count < limit_per_company and day_count < day_limit:
-            i += 1
-
-            while True:
-                try:
-                    driver.find_element_by_xpath("//button[@class='msg-overlay-bubble-header__control artdeco-button artdeco-button--circle artdeco-button--muted artdeco-button--1 artdeco-button--tertiary ember-view']").click()
-                    time.sleep(1)
-                except:
-                    break
-
-            list = driver.find_elements_by_xpath("//div[@class='org-people-profile-card__profile-info']")
-            if i >= len(list):
+            list = driver.find_elements_by_xpath("//span[text()='Connect']/..")
+            if len(list) == 0:
                 try:
                     driver.find_element_by_xpath("//span[text()='Show more results']").click()
                 except:
                     pass
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(3)
-                list = driver.find_elements_by_xpath(
-                "//div[@class='org-people-profile-card__profile-info']")
+                time.sleep(.5)
+            else:
+                for elem in list:
+                    if company_count >= limit_per_company:
+                        break
+                    if day_count >= day_limit:
+                        time.sleep(86400)
+                    try:
+                        elem.click()
+                    except:
+                        
+                        continue
+                    time.sleep(1)
+                    name = driver.find_element_by_xpath("//strong").text.split(" ")[0]
+                    try:
+                        driver.find_element_by_xpath("//button[@aria-label='Add a note']").click()
+                    except:
+                        driver.refresh()
+                        continue
+                    try:
+                        driver.find_element_by_xpath("//textarea").send_keys(replace_message(company, driver, name))
+                    except:
+                        driver.find_element_by_xpath("//textarea").send_keys(replace_message(company, driver, "there"))
+                    time.sleep(.1)
+                    try:
+                        driver.find_element_by_xpath("//input[@type='email']").click()
+                        driver.refresh()
+                        count_bad += 1
+                        continue
+                    except:
+                        driver.find_element_by_xpath("//button[@aria-label='Send now']").click()
+                    try:
+                        driver.find_element_by_xpath("//svg[@xmlns='http://www.w3.org/2000/svg']").click()
+                    except:
+                        pass
+                    time.sleep(random.random() + 1)
+                    day_count += 1
+                    company_count += 1
 
-            try:
-                elem = list[i]
-            except:
-                continue
-            if company_count >= limit_per_company:
-                break
-            if day_count >= day_limit:
-                time.sleep(86400)
-            try:
-                elem.click()
-            except:
-                pass
-            time.sleep(3)
+                    print(f" {company_count} ", end='')
 
-            try:
-                name = driver.find_element_by_xpath("//h1[@class='text-heading-xlarge inline t-24 v-align-middle break-words']").text.split()[0]
-            except:
-                continue
-            try:
-                driver.find_elements_by_xpath("//li-icon[@type='send-privately']")[1].click()
-                time.sleep(1)
-            except:
-                driver.get(a + "/people/?keywords=recruiter")
-                time.sleep(5)
-                continue
-            try:
-                driver.find_element_by_xpath("//input[@placeholder='Subject (optional)']").send_keys(note.format(company=company))
-                driver.find_element_by_xpath("//div[@class='msg-inmail-compose-form-v2 relative flex-1 white display-flex flex-column']//div[@aria-label='Write a message…']").send_keys(message.format(company=company, name=name))
-            except:
-                driver.get(a + "/people/?keywords=recruiter")
-                time.sleep(5)
-                continue
-            time.sleep(.1)
-            driver.find_element_by_xpath("//button[@class='msg-form__send-button artdeco-button artdeco-button--1']").click()
-            time.sleep(1)
-            day_count += 1
-            company_count += 1
-            print(f" {company_count} ", end='')
-            driver.get(a + "/people/?keywords=recruiter")
-            time.sleep(random.random() + 5)
+
+
+if __name__ == '__main__':
+    main()
 
 
 
